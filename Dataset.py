@@ -44,5 +44,5 @@ def experiment():
     dr = DataMG.dataMG.regression_plot(data_clean)
     #DataMG.dataMG.exportCSV(data_cls,'st_cls_kmean.csv')
 if __name__ == '__main__':
-    # main()
-    experiment_02()
+     main()
+    

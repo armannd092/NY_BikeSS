@@ -596,33 +596,3 @@ class dataMG:
         # fig = pie.get_figure()
         # fig.savefig(saveName)
         return st_tn_loc
-
-
-'''
-fp = r'CSV/201903-citibike-tripdata.csv'
-st_cls = r'CSV/stationCLS.csv'
-#fp = r'2019-03-01 00_00_00-2019-03-08 00_00_01-citibike-tripdata.csv'
-data = dataMG(fp=fp).read()
-#print(data.iloc[0])
-d = dataMG.contextToCluster(data,st_cls,contexts=['CSV/Res_in_cls.csv','CSV/Com_in_cls.csv'])
-
-#print(d.head(5))
-
-#dataMG.exportCSV(d,'cls.csv')
-
-#dataMG.addClustr_Intersection(data,st_cls)
-
-#st = dataMG.unique_stations(data.read())
-#st = pd.DataFrame(st,columns=['id','latitude','longitude'])
-
-#dataMG.exportCSV(st,'NY_BikeStations.csv')
-#s = dataMG.boundClustring(data.read(),r'CSV/nycdwi.csv')
-#data.censusToCluster(census=r'CSV/nyc_census_tracts.csv',cn_loc=r'CSV/census_block_loc.csv')
-
-#print(data.toBinary('end_st_cluster').iloc[0])
-#data=data.kminClusterSt(9)
-time = dataMG.data_inPeriod(data,frac=1,freq='30D')
-#print(time[0].iloc[0])
-
-dataMG.exportCSV(data=time[0],filename=time[1])
-'''

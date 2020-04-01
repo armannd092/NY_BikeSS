@@ -7,6 +7,8 @@ Email>>>armannd092@gmial.com
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
+from pandas.tseries.holiday import USFederalHolidayCalendar as calendar
+import matplotlib.path as mpath
 from sklearn.cluster import KMeans
 from sklearn import preprocessing
 import numpy as np
@@ -71,7 +73,9 @@ class dataMG:
         cleaning data from invalid input
         :return:
         """
-        return data[data['birth year'].values > 1940]
+        data = data[data['birth year'].values > 1940]
+        data = data[data['birth year'].values != 1969]
+        return data
 
     def read2learn(self, frac):
         """
@@ -89,7 +93,13 @@ class dataMG:
         out.append(data_prd_tst)
         # print(data_prd_trn.iloc[0])
         return out
-
+    def massRead(fps):
+        ds=[]
+        for fp in fps:
+            d = dataMG(fp).read()
+            ds.append(d)
+        data = pd.concat(ds)
+        return data
     def time2seconds(self, cln):
         """
         transfer the time data of a column to the second
@@ -128,27 +138,37 @@ class dataMG:
             ':', '_')
         return filename
 
-    def add_hour(data):
+    def add_hour(data, key='starttime'):
         """
         Add a column to the data that extract hour from date
         :return: data frame
         """
-        data['hours'] = (pd.to_datetime(data['starttime'])).dt.hour
+        data['hours'] = (pd.to_datetime(data[key])).dt.hour
         return data
 
-    def add_dayofweek(data):
+    def add_dayofweek(data,key='starttime'):
         """
         Add a column to the data that extract day of the week from date
         :return: data frame
         """
-        data['dayofweek'] = (pd.to_datetime(data['starttime'])).dt.dayofweek
+        data['dayofweek'] = (pd.to_datetime(data[key])).dt.dayofweek
         return data
-    def add_dayofmonth(data):
+    def add_dayofmonth(data,key='starttime'):
         """
         Add a column to the data that extract day of the week from date
         :return: data frame
         """
-        data['dayofmonth'] = (pd.to_datetime(data['starttime'])).dt.day
+        data['dayofmonth'] = (pd.to_datetime(data[key])).dt.day
+        return data
+    def add_dayofyear(data, key='starttime'):
+        """
+        Add a column to the data that extract day of the week from date
+        :return: data frame
+        """
+        data['dayofyear'] = (pd.to_datetime(data[key])).dt.dayofyear
+        return data
+    def add_age(data, key="birth year"):
+        data["age"] = 2019-data[key]
         return data
     def sampler(data, frac=0.3):
         """
@@ -266,9 +286,9 @@ class dataMG:
         data['start_st_cluster'] = kmeans.predict(ss_np)
         data['end_st_cluster'] = kmeans.predict(es_np)
         sts['cls'] = kmeans.predict(sts_np)
-        # plt.scatter(x=sts[:,0], y=sts[:,1], data=endSt,c='blue')
-        # plt.scatter(kmeans.cluster_centers_[:,0],kmeans.cluster_centers_[:,1],s=100,c='pink')
-        # plt.show()
+        plt.scatter(x=sts[:,0], y=sts[:,1], data=endSt,c='blue')
+        plt.scatter(kmeans.cluster_centers_[:,0],kmeans.cluster_centers_[:,1],s=100,c='pink')
+        plt.show()
         return data
 
     def toBinary(data, key, nods):
@@ -293,30 +313,30 @@ class dataMG:
             return ks
 
         dt = data
-        for k in key:
-            for n in nods:
-                data_key = dt[k].copy()
-                l = []
-                nms = clmname(k, n)
-                for i in data_key:
-                    if i != None:
-                        i = int(i)
-                    else:
-                        i = -1
-                    b = format(i, '08b')
-                    sb = str(b)
-                    sbl = split(sb)[3:]
-                    ibl = toInt(sbl)
-                    # print(ibl)
-                    l.append(ibl)
-                pass
+        for k,n in zip(key,nods):
+            data_key = dt[k].copy()
+            l = []
+            nms = clmname(k, n)
+            for i in data_key:
+                if i != None:
+                    i = int(i)
+                else:
+                    i = -1
+                bin_mask = "0" + str(n) + "b"
+                b = format(i, bin_mask)
+                sb = str(b)
+                sbl = split(sb)
+                ibl = toInt(sbl)
+                l.append(ibl)
             pass
             array = np.array(l)
-            d = pd.DataFrame({nms[0]: array[:, 0],
-                              nms[1]: array[:, 1],
-                              nms[2]: array[:, 2],
-                              nms[3]: array[:, 3],
-                              nms[4]: array[:, 4]})
+            print(array.shape)
+            dic={}
+            for m in range(n):
+
+                dic[nms[m]] = array[:, m]
+            pass
+            d = pd.DataFrame(dic)
             dt = pd.DataFrame.join(dt, d)
         pass
         return dt
@@ -387,6 +407,28 @@ class dataMG:
                 pass
             clss.append(int(cls))
         data['end_st_cluster'] = pd.DataFrame(clss)
+        return data
+
+    def station_id(data,key="start station id"):
+        """
+        this function take the station ids and renumber them
+        :return: Data
+        """
+        def nam(key):
+            sk = key.split(" ")
+            if sk[0] == "start":
+                return "st_id_start"
+            elif sk[0] == "end":
+                return "st_id_end"
+        sts = dataMG.unique_stations(data)
+        sts_list = sts[0].values.tolist()
+        sts_dic = {}
+        for i in range(len(sts_list)):
+            sts_dic[i] = [i,sts_list[i]]
+        sts_renum_data=pd.DataFrame.from_dict(sts_dic , orient="index")
+        sts_renum_data = sts_renum_data.rename(columns={0:nam(key),1:key})
+
+        data = data.join(other=sts_renum_data.set_index(key), how="left", on=key, rsuffix='_right')
         return data
 
     def boundClustring(data, boundrys):
@@ -552,24 +594,84 @@ class dataMG:
         fig = pie.get_figure()
         fig.savefig('test.pdf')
 
-    def tripNum_time(data, saveName='TripNum_time.pdf'):
+    def tripNum_time(data, saveName='TripNum_time.pdf', key = ""):
         '''
         this function make a datetime table base on the number of the trips
         :return: Series
         '''
         dt_h = dataMG.add_hour(data)
         dt_d = dataMG.add_dayofmonth(dt_h)
+        dt_d = dataMG.add_age(dt_d)
         dt_d =dataMG.clean(dt_d)
-        tn = pd.Series(dt_d['birth year'], name='TripNum').value_counts(sort=False)
+        if key:
+            try:
+                tn = pd.Series(dt_d[key], name='TripNum').value_counts(sort=False)
+            except:
+                print("something went wrong!")
         tn_d = tn.to_frame()
-        tn_d['birth year'] = tn_d.index
+        tn_d[key] = tn_d.index
         ax = plt.gca()
-        pie = tn_d.plot(kind='line', x='birth year', ax=ax)
+        pie = tn_d.plot(kind='line', x=key, ax=ax, grid=True)
         plt.show()
         fig = pie.get_figure()
         fig.savefig(saveName)
         print(pd.DataFrame.idxmax(tn_d))
         return tn_d
+
+    def tripNum_age(data, saveName='TripNum_ageGroup.pdf', key = "age"):
+        '''
+        this function make a datetime table base on the number of the trips
+        :return: Series
+        '''
+        dt_d = dataMG.add_age(data)
+        dt_d =dataMG.clean(dt_d)
+        bins = np.arange(10, 100, 10)
+        dt_d['category'] = np.digitize(dt_d['age'], bins, right=True)
+        if key:
+            try:
+                tn = pd.Series(dt_d['category'], name='TripNum').value_counts(sort=False)
+            except:
+                print("something is wrong!")
+
+        tn_d = tn.to_frame()
+        tn_d['category'] = tn_d.index
+        print(tn_d)
+        ax = plt.gca()
+        pie = tn_d.plot(kind='bar', x='category', ax=ax, grid=True)
+        plt.show()
+        fig = pie.get_figure()
+        fig.savefig(saveName)
+        print(pd.DataFrame.idxmax(tn_d))
+        return tn_d
+
+    def tripNum_time_Comp(datas,saveName='TripNum_time_comp.pdf', key = ""):
+        '''
+        this function make a datetime table base on the number of the trips
+        :return: Series
+        '''
+
+        for data in datas:
+            dt_h = dataMG.add_hour(data)
+            dt_h = dataMG.add_dayofweek(dt_h)
+            dt_d = dataMG.add_dayofmonth(dt_h)
+            dt_d = dataMG.clean(dt_d)
+            if key:
+                tn = pd.Series(dt_d[key], name='TripNum').value_counts(sort=False)
+                tn_d = tn.to_frame()
+                tn_d[key] = tn_d.index
+                if key == "dayofmonth":
+                    tn_end = dt_d[[key, "dayofweek"]].drop_duplicates()
+                    tn_end.set_index(key)
+                    tn_d_merg = pd.merge(left=tn_d,right=tn_end,how="inner",left_on=key,right_on=key)
+                    mark_on = tn_d_merg.loc[tn_d_merg["dayofweek"].isin([5,6])]
+                    plt.scatter(x=mark_on[key], y=mark_on['TripNum'])
+                ax = plt.gca()
+                pie = tn_d.plot(kind='line', x=key, ax=ax, grid=True)
+                fig = pie.get_figure()
+                fig.savefig(saveName)
+                print(pd.DataFrame.idxmax(tn_d))
+        plt.show()
+        return None
 
     def tripNum_St(data, saveName='TripNum_st.pdf', start=True):
         '''
@@ -596,3 +698,33 @@ class dataMG:
         # fig = pie.get_figure()
         # fig.savefig(saveName)
         return st_tn_loc
+
+
+'''
+fp = r'CSV/201903-citibike-tripdata.csv'
+st_cls = r'CSV/stationCLS.csv'
+#fp = r'2019-03-01 00_00_00-2019-03-08 00_00_01-citibike-tripdata.csv'
+data = dataMG(fp=fp).read()
+#print(data.iloc[0])
+d = dataMG.contextToCluster(data,st_cls,contexts=['CSV/Res_in_cls.csv','CSV/Com_in_cls.csv'])
+
+#print(d.head(5))
+
+#dataMG.exportCSV(d,'cls.csv')
+
+#dataMG.addClustr_Intersection(data,st_cls)
+
+#st = dataMG.unique_stations(data.read())
+#st = pd.DataFrame(st,columns=['id','latitude','longitude'])
+
+#dataMG.exportCSV(st,'NY_BikeStations.csv')
+#s = dataMG.boundClustring(data.read(),r'CSV/nycdwi.csv')
+#data.censusToCluster(census=r'CSV/nyc_census_tracts.csv',cn_loc=r'CSV/census_block_loc.csv')
+
+#print(data.toBinary('end_st_cluster').iloc[0])
+#data=data.kminClusterSt(9)
+time = dataMG.data_inPeriod(data,frac=1,freq='30D')
+#print(time[0].iloc[0])
+
+dataMG.exportCSV(data=time[0],filename=time[1])
+'''
